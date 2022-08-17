@@ -1,0 +1,31 @@
+;This is a text file.
+[CovertActionNarrative_AlienCorpses_Program X2CovertActionNarrativeTemplate]
+ActionName="Scavenge Alien Loot"
+ActionPreNarrative="ADVENT 'had' a 'friendly fire' 'incident' several days back. Scavengers haven't hit the site yet, incidentally. - 'Handler 9'"
+ActionPostNarrative="Psinet is clear. - 'Handler 9'"
+
+[CovertActionNarrative_UtilityItems_Program X2CovertActionNarrativeTemplate]
+ActionName="Factory Reactivation"
+ActionPreNarrative="Back in the good ol' days, we would often hijack civilian factories to produce some of our own components. I'll reactivate one and see if we can get anything going - just send in a team to pick up the goods. - Dr. Hadley"
+ActionPostNarrative="There wasn't much left in the fabs, but hopefully it'll serve you well. - Dr. Hadley"
+
+[CovertActionNarrative_ExperimentalItem_Program X2CovertActionNarrativeTemplate]
+ActionName="Our Experiment Now"
+ActionPreNarrative="We carried out a strike on an ADVENT research outpost a while back. But word is, scavs think there might be something left in the wreckage. - 'Handler 9'"
+ActionPostNarrative="Looks like we're not as thorough as we'd like to think. A boon for you - and three hundred pushups for the people who carried out this op. - 'Handler 9'"
+
+[CovertActionNarrative_ExhaustiveTraining_Program X2CovertActionNarrativeTemplate]
+ActionName="Inter-Resistance Exercises"
+ActionPreNarrative="We've been training resistance fighters even before the aliens showed up. The enemy has changed, but not much else. Send a detachment towards your nearest FOB for a VRTC. - 'Handler 9'"
+ActionPostNarrative="You know, I hate the VR trainings, but it seems like your people loved it. Barely got them out of the sims for the flight back. - 'Handler 9'"
+
+[CovertActionNarrative_PatrolWilderness_Program X2CovertActionNarrativeTemplate]
+ActionName="Patrol Wilderness"
+ActionPreNarrative="RECSAT 2 picked up several benign anomalies on its last sweep through this sector. They're all yours, we're tied up for the time being. - 'Handler 9'"
+ActionPostNarrative="The patrol found several interesting locations that warrant further investigation."
+
+[CovertActionNarrative_BlackMarket_Program X2CovertActionNarrativeTemplate]
+ActionName="Help the Smugglers"
+ActionPreNarrative="The Black Market was sent packing by an ADVENT anti-smuggling operation a few weeks ago. We should send a squad to help them get back on their feet."
+ActionPostNarrative="We saved our smuggler friends from an ADVENT sweep, but we lost them in the fighting. We'll need the Avenger's scanners to locate them again."
+ 

@@ -1,0 +1,11 @@
+/src/XComGame/*
+Src/XComGame/*
+*.txt
+%*
+.atom-build*
+settings\.json
+**/.DS_Store
+*.code-workspace
+tmp/
+PublishedFileId\.ID
+.yo-repository

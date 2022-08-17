@@ -1,0 +1,69 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "-file \"${workspaceRoot}/scripts/build.ps1\" -mod \"SOCIBridgeTheProgram\" -srcDirectory \"${workspaceRoot}/src\" -sdkPath \"${config:mod.sdkpath}\" -gamePath \"${config:mod.gamepath}\"",
+                "options": {
+                    "shell": {
+                        "executable": "powershell.exe",
+                    },
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [{
+                "owner": "unrealscript",
+                "fileLocation": ["absolute"],
+                "pattern": {
+                    "regexp": "^(.*)\\(([0-9]*)\\) : (Warning|Error), ([^\n]*)$",
+                    "file": 1,
+                    "line": 2,
+                    "severity": 3,
+                    "message": 4
+                }
+            }]
+        },
+        {
+            "label": "publish",
+            "type": "shell",
+            "command": "-file \"${workspaceRoot}/scripts/publish.ps1\" -amuPath \"${config:mod.amupath}\"",
+            "options": {
+                "shell": {
+                    "executable": "powershell.exe",
+                },
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "debug",
+            "type": "shell",
+            "command": "-file \"${workspaceRoot}/scripts/run.ps1\" -gamePath \"${config:mod.gamepath}\"",
+            "options": {
+                "shell": {
+                    "executable": "powershell.exe",
+                },
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "runUnrealEditor",
+            "type": "shell",
+            "command": "-file \"${workspaceRoot}/scripts/runUnrealEditor.ps1\" -sdkPath \"${config:mod.sdkpath}\"",
+            "options": {
+                "shell": {
+                    "executable": "powershell.exe",
+                },
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "launchAML",
+            "type": "process",
+            "command": "${config:mod.amlpath}",
+            "problemMatcher": []
+        }
+    ]
+}

@@ -1,0 +1,1 @@
+A compatibilty patch for the Program to work with Covert Infiltration.

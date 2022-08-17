@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Default" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Guid>0</Guid>
+    <Name>SOCIBridgeTheProgram</Name>
+    <Description>"A compatibilty patch for the Program to work with Covert Infiltration.</Description>
+    <SteamPublishID>0</SteamPublishID>
+    <AssemblyName>SOCIBridgeTheProgram</AssemblyName>
+    <RootNamespace>SOCIBridgeTheProgram</RootNamespace>
+    <ProjectGuid>{0}</ProjectGuid>
+  </PropertyGroup>
+  <ItemGroup>
+    <Folder Include="Config\" />
+    <Folder Include="Content\" />
+    <Folder Include="Localization\" />
+    <Folder Include="Localization\INT\" />
+    <Folder Include="Src\" />
+    <Folder Include="Src\SOCIBridgeTheProgram\" />
+    <Folder Include="Src\SOCIBridgeTheProgram\Classes\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="ReadMe.txt" />
+    <Content Include="ModPreview.jpg" />
+    <Content Include="Config\XComEditor.ini" />
+    <Content Include="Config\XComEngine.ini" />
+    <Content Include="Config\XComGame.ini" />
+    <Content Include="Localization\INT\XComGame.int" />
+    <Content Include="Localization\INT\SOCIBridgeTheProgram.int" />
+    <Content Include="Src\SOCIBridgeTheProgram\Classes\extra_globals.uci" />
+    <Content Include="Src\SOCIBridgeTheProgram\Classes\X2DownloadableContentInfo_SOCIBridgeTheProgram.uc" />
+    <Content Include="Config\XcomGameBoard.ini" />
+    <Content Include="Config\XComInfiltration.ini" />
+    <Content Include="Src\SOCIBridgeTheProgram\Classes\RTUIScreenListener_OSFCI.uc" />
+  </ItemGroup>
+  <Import Project="$(MSBuildLocalExtensionPath)\XCOM2.targets" />
+</Project>
