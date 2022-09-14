@@ -401,6 +401,7 @@ class BuildProject {
 	[void]_CopyToSrc() {
 		# mirror the SDK's SrcOrig to its Src
 		Write-Host "Mirroring SrcOrig to Src..."
+		Write-Host $this.sdkPath
 		Robocopy.exe "$($this.sdkPath)\Development\SrcOrig" "$($this.devSrcRoot)" *.uc *.uci $global:def_robocopy_args
 		Write-Host "Mirrored SrcOrig to Src."
 
@@ -423,15 +424,35 @@ class BuildProject {
 	}
 
 	[void]_CopySrcFolder([string] $includeDir) {
+		Write-Host "Copying $includeDir to $($this.devSrcRoot)"
 		Copy-Item "$($includeDir)\*" "$($this.devSrcRoot)\" -Force -Recurse -WarningAction SilentlyContinue
-		$extraGlobalsFile = "$($includeDir)\extra_globals.uci"
-		if (Test-Path $extraGlobalsFile) {
-			# append extra_globals.uci to globals.uci
-			"// Macros included from $($extraGlobalsFile)" | Add-Content "$($this.devSrcRoot)\Core\Globals.uci"
-			Get-Content $extraGlobalsFile | Add-Content "$($this.devSrcRoot)\Core\Globals.uci"
 
-			$this._ParseMacroFile($extraGlobalsFile)
+		$SrcSubDirs = Get-ChildItem -Path $($includeDir) -Directory | Select-Object Name
+		foreach($dir in $SrcSubDirs) {
+			$this._HandleSrcSubdirectories("$($this.devSrcRoot)\$($dir.Name)\Classes")
 		}
+
+		$extraGlobalsFile = "$($includeDir)\extra_globals.uci"
+		Write-Host "Looking for $extraGlobalsFile..."
+		if (Test-Path $extraGlobalsFile) {
+			Write-Host "Found it."
+			$this._ApplyMacroFile($extraGlobalsFile)
+		} else {
+			Write-Host "Didn't find it."
+		}
+	}
+
+	[void]_HandleSrcSubdirectories([string]$srcDir) {
+		Write-Host "Handling Source Subdirectories for $srcDir"
+		Get-ChildItem -Path $srcDir -Recurse -Filter "*.uc" | Get-ChildItem | Copy-Item -Destination {$srcDir} -Force -WarningAction SilentlyContinue -ErrorAction SilentlyContinue
+	}
+
+	[void]_ApplyMacroFile([string]$file) {
+		# append extra_globals.uci to globals.uci
+		"// Macros included from $($file)" | Add-Content "$($this.devSrcRoot)\Core\Globals.uci"
+		Get-Content $file | Add-Content "$($this.devSrcRoot)\Core\Globals.uci"
+
+		$this._ParseMacroFile($file)
 	}
 
 	[void]_ParseMacroFile([string]$file) {

@@ -27,8 +27,8 @@
  `endif
  ***************************************************************************************************************************************************************
 */
-`define RT class'X2DownloadableContentInfo_SOCIBridgeTheProgram'
+`define RT class'RTHelpers'
 `define RTS `RT.static
-`define RTLOG(msg, showredscreen, showconsole) `RTS.RTLog(`msg, `showredscreen, `showconsole)
 `define CreateChangeState(msg, setVisFence, visFenceTimeout) class'XComGameStateContext_ChangeContainer'.static.CreateChangeState(`msg, `setVisFence, `visFenceTimeout)
 `define ConsoleCommand(command) class'WorldInfo'.static.GetWorldInfo().GetALocalPlayerController().ConsoleCommand(`command)
+`define DLCINFO class'X2DownloadableContentInfo_SOCIBridgeTheProgram'.static

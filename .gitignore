@@ -9,3 +9,6 @@ settings\.json
 tmp/
 PublishedFileId\.ID
 .yo-repository
+BuildCache/
+BuildCache/*
+RisingTides
