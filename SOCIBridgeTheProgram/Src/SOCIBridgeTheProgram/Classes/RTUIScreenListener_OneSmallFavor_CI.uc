@@ -262,6 +262,8 @@ simulated function OnCheckboxChange(UICheckbox checkboxControl)
 static function EventListenerReturn CI_UICAG_UpdateDataListener(Object EventData, Object EventSource, XComGameState GameState, Name EventID, Object CallbackData) {
 	local UICovertActionsGeoscape LocUICAG;
 	local RTUIScreenListener_OneSmallFavor_CI thisObj;
+	local RTGameState_ProgramFaction Program;
+	local XComGameState_CovertAction ActionState;
 	local UIButton Button;
 
 	thisObj = RTUIScreenListener_OneSmallFavor_CI(CallbackData);
@@ -276,10 +278,39 @@ static function EventListenerReturn CI_UICAG_UpdateDataListener(Object EventData
 		thisObj.AddOneSmallFavorSelectionCheckBox();
 	}
 
-	if(Button.isDisabled || LocUICAG.GetAction().bStarted) {
+	ActionState = LocUICAG.GetAction();
+
+	if(Button.isDisabled || ActionState.bStarted) {
 		`RTLOG("RTCI: MainActionButton is disabled or the current action is in progress, disable checkbox");
 		thisObj.Checkbox.SetReadOnly(true);
 		return ELR_NoInterrupt;
+	}
+
+	Program = `RTS.GetProgramState();
+	if(Program.IsOneSmallFavorAvailable() != eAvailable) {
+		`RTLOG("RTCI: Favor is not available, disable checkbox");
+		thisObj.Checkbox.SetReadOnly(true);
+		return ELR_NoInterrupt;
+	}
+
+	if(class'RTGameState_ProgramFaction'.default.InvalidCovertActions.Find(ActionState.GetMyTemplateName()) != INDEX_NONE) {
+		`RTLOG("RTCI: Favor cannot be called on this type of CA, disable checkbox");
+		thisObj.Checkbox.SetReadOnly(true);
+		return ELR_NoInterrupt;
+	}
+
+	if(class'X2Helper_Infiltration'.static.IsInfiltrationAction(ActionState)) {
+		if(!Program.IsThereAnAvailableSquadForMission(class'X2Helper_Infiltration'.static.GetMissionSiteFromAction(ActionState))) {
+			`RTLOG("RTCI: No squad available for this infiltration, disable checkbox");
+			thisObj.Checkbox.SetReadOnly(true);
+			return ELR_NoInterrupt;
+		 }
+	} else {
+		 if(!Program.IsThereAnAvailableSquadForCovertAction(ActionState)) {
+			`RTLOG("RTCI: No squad available for this CA, disable checkbox");
+			thisObj.Checkbox.SetReadOnly(true);
+			return ELR_NoInterrupt;
+		 }
 	}
 
 	thisObj.Checkbox.SetReadOnly(false);
@@ -295,15 +326,15 @@ function ModifiedLaunchButtonClicked(UIButton Button) {
 	`RTLOG("ModifiedLaunchButtonClicked!");
 	ActionRef = UICAG.GetAction().GetReference();
 	if(UICAG == none) {
-		`RTLOG("WTF UICAG IS NONE?!");
+		`RTLOG("WTF UICAG IS NONE?!", true, false);
 	}
 
 	if(Checkbox == none) {
-		`RTLOG("WTF CHECKBOX IS NONE?!");
+		`RTLOG("WTF CHECKBOX IS NONE?!", true, false);
 	}
 
 	if(ActionRef.ObjectID == 0) {
-		`RTLOG("WTF ActionRef IS NONE?!");
+		`RTLOG("WTF ActionRef IS NONE?!", true, false);
 	}
 
 	if(Checkbox.bChecked) {
@@ -313,14 +344,10 @@ function ModifiedLaunchButtonClicked(UIButton Button) {
 		OSFActivated = false;
 		OldOnClickedDelegate(Button);
 	}
-
-	
 }
 
 function bool DoOneSmallFavor() {
 	local RTGameState_ProgramFaction			Program;
-	local XComGameState							NewGameState;
-	local XComGameState_HeadquartersXCom		XComHQ; //because the game stores a copy of mission data and this is where its stored in
 	local XComGameStateHistory					History;
 	local XComGameState_MissionSite				MissionState;
 	local XComGameState_CovertAction			ActionState;
@@ -336,28 +363,61 @@ function bool DoOneSmallFavor() {
 	}
 
 	ActionState = XComGameState_CovertAction(History.GetGameStateForObjectID(ActionRef.ObjectID));
-	MissionState = class'X2Helper_Infiltration'.static.GetMissionSiteFromAction(ActionState);
-
-	if(ActionState == none || MissionState == none) {
-		`RTLOG("Did not find ActionState or MissionState for OSF, returning...");
-		`RTLOG("ActionState="$ActionState==none);
-		`RTLOG("MissionState="$MissionState==none);
+	if(ActionState == none) {
+		`RTLOG("Did not find ActionState for OSF, returning...");
 		return false;
 	}
 
-	if(MissionState.GeneratedMission.SitReps.Find('RTOneSmallFavor') != INDEX_NONE) {
-		`RTLOG("This map already has the One Small Favor tag!", true);
-		return false;
+	if(!class'X2Helper_Infiltration'.static.IsInfiltrationAction(ActionState)) {
+		`RTLOG("RTCI: Handling OSF Covert Action!");
+		return DoOneSmallFavor_CovertAction(Program, ActionState);
+	} else {
+		`RTLOG("Handling OSF Infiltration!");
+		MissionState = class'X2Helper_Infiltration'.static.GetMissionSiteFromAction(ActionState);
+		if(MissionState == none) {
+			`RTLOG("RTCI: MissionState for OSF Infiltration was none?!", true, false);
+			return false;
+		}
+
+		if(MissionState.GeneratedMission.SitReps.Find('RTOneSmallFavor') != INDEX_NONE) {
+			`RTLOG("RTCI: This map already has the One Small Favor tag!", true);
+			return false;
+		}
+
+		if(MissionState.TacticalGameplayTags.Find('RTOneSmallFavor') != INDEX_NONE) {
+			`RTLOG("RTCI: This mission is already tagged for one small favor!");
+			return false;
+		}
+
+		return DoOneSmallFavor_Infiltration(Program, ActionState, MissionState);
+	}
+}
+
+protected function bool DoOneSmallFavor_CovertAction(RTGameState_ProgramFaction Program, XComGameState_CovertAction ActionState) {
+	local XComGameState							NewGameState;
+
+	NewGameState = `CreateChangeState("Rising Tides: Cashing in One Small Favor For Covert Action");
+	Program = RTGameState_ProgramFaction(NewGameState.ModifyStateObject(Program.class, Program.ObjectID));
+	ActionState = XComGameState_CovertAction(NewGameState.ModifyStateObject(class'XComGameState_CovertAction', ActionState.ObjectID));
+
+	Program.CashOneSmallFavorForCovertAction(NewGameState, ActionState); // we're doing it boys
+	//MakeStaffSlotsOptionalForCovertAction(NewGameState, ActionState);
+	
+	if (NewGameState.GetNumGameStateObjects() > 0) {
+		`XCOMGAME.GameRuleset.SubmitGameState(NewGameState);
+	} else {
+		`RTLOG("Warning: One Small Favor activated but didn't add any objects to the GameState?!", true);
+		`XCOMHISTORY.CleanupPendingGameState(NewGameState);
 	}
 
-	if(MissionState.TacticalGameplayTags.Find('RTOneSmallFavor') != INDEX_NONE) {
-		`RTLOG("This mission is already tagged for one small favor!");
-		return false;
-	}
+	return true; 
+}
 
-	`RTLOG("Activating OSF For Infiltration");
+protected function bool DoOneSmallFavor_Infiltration(RTGameState_ProgramFaction Program, XComGameState_CovertAction ActionState, XComGameState_MissionSite MissionState) {
+	local XComGameState							NewGameState;
+	local XComGameState_HeadquartersXCom		XComHQ; //because the game stores a copy of mission data and this is where its stored in
 
-	NewGameState = `CreateChangeState("Rising Tides: Cashing in One Small Favor");
+	NewGameState = `CreateChangeState("Rising Tides: Cashing in One Small Favor For Infiltration");
 	Program = RTGameState_ProgramFaction(NewGameState.ModifyStateObject(Program.class, Program.ObjectID));
 	XComHQ = class'UIUtilities_Strategy'.static.GetXComHQ();
 	XComHQ = XComGameState_HeadquartersXCom(NewGameState.ModifyStateObject(XComHQ.class, XComHQ.ObjectID));
@@ -368,13 +428,13 @@ function bool DoOneSmallFavor() {
 	Program.CashOneSmallFavorForMission(NewGameState, MissionState); // we're doing it boys
 	ModifyOneSmallFavorSitrepForGeneratedMission(Program, MissionState, true);
 	ModifyMissionData(XComHQ, MissionState);
-	MakeStaffSlotsOptionalForProgramOperation(NewGameState, ActionState);
+	MakeStaffSlotsOptionalForProgramInfiltration(NewGameState, ActionState);
 	
 	if (NewGameState.GetNumGameStateObjects() > 0) {
 		`XCOMGAME.GameRuleset.SubmitGameState(NewGameState);
 	} else {
 		`RTLOG("Warning: One Small Favor activated but didn't add any objects to the GameState?!", true);
-		History.CleanupPendingGameState(NewGameState);
+		`XCOMHISTORY.CleanupPendingGameState(NewGameState);
 	}
 
 	return true;
@@ -382,30 +442,71 @@ function bool DoOneSmallFavor() {
 
 function RemoveOneSmallFavor() {
 	local RTGameState_ProgramFaction			Program;
-	local XComGameState							NewGameState;
-	local XComGameState_HeadquartersXCom		XComHQ; //because the game stores a copy of mission data and this is where its stored in
 	local XComGameStateHistory					History;
 	local XComGameState_MissionSite				MissionState;
 	local XComGameState_CovertAction			ActionState;
 
 	History = `XCOMHISTORY;
-
 	ActionState = XComGameState_CovertAction(History.GetGameStateForObjectID(ActionRef.ObjectID));
-	MissionState = class'X2Helper_Infiltration'.static.GetMissionSiteFromAction(ActionState);
-
-	if(MissionState.GeneratedMission.SitReps.Find('RTOneSmallFavor') != INDEX_NONE
-		&& MissionState.TacticalGameplayTags.Find('RTOneSmallFavor') != INDEX_NONE
-	) return;
-	
-	`RTLOG("Deactivating OSF For Infiltration!");
-
 	Program = RTGameState_ProgramFaction(History.GetSingleGameStateObjectForClass(class'RTGameState_ProgramFaction'));
+
+	if(!class'X2Helper_Infiltration'.static.IsInfiltrationAction(ActionState)) {
+		`RTLOG("RTCI: Removing OSF from Covert Action!");
+		RemoveOneSmallFavor_CovertAction(Program, ActionState);
+		return;
+	} else {
+		`RTLOG("RTCI: Removing OSF from Infiltration");
+		MissionState = class'X2Helper_Infiltration'.static.GetMissionSiteFromAction(ActionState);
+		if(MissionState == none) {
+			`RTLOG("RTCI: MissionState for OSF Infiltration was none?!", true, false);
+			return;
+		}
+
+		if(MissionState.GeneratedMission.SitReps.Find('RTOneSmallFavor') != INDEX_NONE
+			&& MissionState.TacticalGameplayTags.Find('RTOneSmallFavor') != INDEX_NONE
+		) {
+			`RTLOG("RTCI: MissionState for OSF Infiltration was none?!", true, false);
+			return;
+		}
+
+		RemoveOneSmallFavor_Infiltration(Program, ActionState, MissionState);
+		return;
+	}
+
+	return;
+}
+
+protected function bool RemoveOneSmallFavor_CovertAction(RTGameState_ProgramFaction Program, XComGameState_CovertAction ActionState) {
+	local XComGameState							NewGameState;
+
+	NewGameState = `CreateChangeState("Rising Tides: Cashing in One Small Favor For Covert Action");
+	Program = RTGameState_ProgramFaction(NewGameState.ModifyStateObject(Program.class, Program.ObjectID));
+	ActionState = XComGameState_CovertAction(NewGameState.ModifyStateObject(class'XComGameState_CovertAction', ActionState.ObjectID));
+
+	Program.UncashOneSmallFavorForCovertAction(NewGameState, ActionState); // we're doing it boys
+	//RevertStaffSlotsForXComCovertAction(NewGameState, ActionState);
+	
+	if (NewGameState.GetNumGameStateObjects() > 0) {
+		`XCOMGAME.GameRuleset.SubmitGameState(NewGameState);
+	} else {
+		`RTLOG("Warning: One Small Favor activated but didn't add any objects to the GameState?!", true);
+		`XCOMHISTORY.CleanupPendingGameState(NewGameState);
+	}
+
+	OSFActivated = false;
+
+	return true; 
+}
+
+private function RemoveOneSmallFavor_Infiltration(RTGameState_ProgramFaction Program, XComGameState_CovertAction ActionState, XComGameState_MissionSite MissionState) {
+	local XComGameState							NewGameState;
+	local XComGameState_HeadquartersXCom		XComHQ; //because the game stores a copy of mission data and this is where its stored in
 
 	XComHQ = class'UIUtilities_Strategy'.static.GetXComHQ();
 	RemoveTag(MissionState.GeneratedMission.SitReps, 'RTOneSmallFavor');
 	RemoveTag(MissionState.TacticalGameplayTags, 'RTOneSmallFavor');
 
-	NewGameState = `CreateChangeState("Rising Tides: Uncashing in One Small Favor");
+	NewGameState = `CreateChangeState("Rising Tides: Uncashing in One Small Favor for Infiltration");
 	Program = RTGameState_ProgramFaction(NewGameState.ModifyStateObject(Program.class, Program.ObjectID));
 	XComHQ = XComGameState_HeadquartersXCom(NewGameState.ModifyStateObject(XComHQ.class, XComHQ.ObjectID));
 	MissionState = XComGameState_MissionSite(NewGameState.ModifyStateObject(class'XComGameState_MissionSite', MissionState.ObjectID));
@@ -414,17 +515,15 @@ function RemoveOneSmallFavor() {
 	Program.UncashOneSmallFavorForMission(NewGameState, MissionState);
 	ModifyOneSmallFavorSitrepForGeneratedMission(Program, MissionState, false);
 	ModifyMissionData(XComHQ, MissionState);
-	RevertStaffSlotsForXComOperation(NewGameState, ActionState);
+	RevertStaffSlotsForXComInfiltration(NewGameState, ActionState);
 
 	if (NewGameState.GetNumGameStateObjects() > 0) {
 		`XCOMGAME.GameRuleset.SubmitGameState(NewGameState);
 	} else {
-		History.CleanupPendingGameState(NewGameState);
+		`XCOMHISTORY.CleanupPendingGameState(NewGameState);
 	}
 
 	OSFActivated = false;
-
-	return;
 }
 
 simulated function ModifyOneSmallFavorSitrepForGeneratedMission(RTGameState_ProgramFaction Program, XComGameState_MissionSite MissionState, bool bAdd = true) {
@@ -445,7 +544,8 @@ function ModifyMissionData(XComGameState_HeadquartersXCom NewXComHQ, XComGameSta
 }
 
 // Record a list of all of the Covert Action Staff Slots that were optional beforehand, then make them all optional
-simulated function MakeStaffSlotsOptionalForProgramOperation(XComGameState NewGameState, XComGameState_CovertAction ActionState) {
+// so that we can launch
+simulated function MakeStaffSlotsOptionalForProgramInfiltration(XComGameState NewGameState, XComGameState_CovertAction ActionState) {
 	local CovertActionStaffSlot Slot, EmptySlot;
 	local int i;
 
@@ -458,7 +558,7 @@ simulated function MakeStaffSlotsOptionalForProgramOperation(XComGameState NewGa
 }
 
 // Record a list of all of the Covert Action Staff Slots that were optional beforehand, then make them all optional
-simulated function RevertStaffSlotsForXComOperation(XComGameState NewGameState, XComGameState_CovertAction ActionState) {
+simulated function RevertStaffSlotsForXComInfiltration(XComGameState NewGameState, XComGameState_CovertAction ActionState) {
 	local CovertActionStaffSlot Slot, EmptySlot;
 	local int i;
 

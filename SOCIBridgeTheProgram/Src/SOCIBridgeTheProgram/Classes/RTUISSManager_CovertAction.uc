@@ -24,8 +24,7 @@ simulated protected function AugmentFakeMissionSite(XComGameState_MissionSite Fa
 	`RTLOG("RTCI: AugmentFakeMissionSite is activated: " $ Activated);
 
 	CovertAction = GetAction();
-	if (isInfiltration())
-	{
+	if (isInfiltration()) {
 		// Show the enviromental sitreps on loadout
 		FakeMissionSite.GeneratedMission.SitReps = class'X2Helper_Infiltration'.static.GetMissionSiteFromAction(CovertAction).GeneratedMission.SitReps;
 		if(Activated && SpecialSoldiers.Length == 0) {
@@ -74,10 +73,13 @@ simulated protected function BuildConfiguration()
 	CovertAction = GetAction();
 	
 	if(!Activated) {
+		`RTLOG("OSF was not activated, building default slots");
 		Slots = BuildDefaultSlots();
 	} else if(Activated && isInfiltration()) {
+		`RTLOG("OSF was activated for Infiltration, building infiltration slots");
 		Slots = BuildOSFInfiltrationSlots();
 	} else if(Activated && !isInfiltration()) {
+		`RTLOG("OSF was activated for CA, building CA slots");
 		Slots = BuildOSFCovertActionSlots();
 	} else {
 		`RTLOG("RTCI: Failed to build slots!", true, true);
@@ -86,6 +88,8 @@ simulated protected function BuildConfiguration()
 
 	Configuration.SetDisallowAutoFill(true);
 	Configuration.SetSkipIntroAnimation(SkipIntro);
+
+	`RTLOG("RTCI: Slots.Length = " $ Slots.Length);
 
 	Configuration.SetSlots(Slots);
 	Configuration.SetHideMissionInfo(true);
@@ -112,13 +116,15 @@ simulated protected function BuildConfiguration()
     Configuration.SetFrozen();
 }
 
-simulated protected function array<SSAAT_SlotConfiguration> BuildDefaultSlots() {
+simulated protected function array<SSAAT_SlotConfiguration> BuildDefaultSlots(optional array<int> OverrideSlots) {
 	local XComGameStateHistory History;
 	local XComGameState_StaffSlot StaffSlotState;
 	local XComGameState_CovertAction CovertAction;
 	local XComGameState_Reward RewardState;
 	local array<SSAAT_SlotConfiguration> Slots;
 	local int i;
+
+	CovertAction = GetAction();
 
 	Slots.Length = CovertAction.StaffSlots.Length;
 	History = `XCOMHISTORY;
@@ -135,6 +141,12 @@ simulated protected function array<SSAAT_SlotConfiguration> BuildDefaultSlots() 
 		// have explicit rank names set up, it'll use the standard code path of falling back to the default ranks.
 		if (StaffSlotState.RequiredMinRank > 0) Slots[i].Notes.AddItem(CreateRankNote(StaffSlotState.RequiredMinRank, StaffSlotState.RequiredClass));
 		
+		if(OverrideSlots.Length > 0) {
+			if(OverrideSlots.Find(i) != INDEX_NONE) {
+				Slots[i].Notes.AddItem(CreateProgramNote());
+			}
+		}
+
 		// Change the slot type if needed
 		if (StaffSlotState.IsEngineerSlot())
 		{
@@ -152,7 +164,11 @@ simulated protected function array<SSAAT_SlotConfiguration> BuildDefaultSlots() 
 }
 
 simulated protected function array<SSAAT_SlotConfiguration> BuildOSFCovertActionSlots() {
-	return BuildDefaultSlots();
+	local array<int> OverrideSlots;
+
+	OverrideSlots.AddItem(0);
+
+	return BuildDefaultSlots(OverrideSlots);
 }
 
 simulated protected function array<SSAAT_SlotConfiguration> BuildOSFInfiltrationSlots() {
