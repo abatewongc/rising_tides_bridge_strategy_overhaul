@@ -17,6 +17,8 @@ var private float CHECKBOX_HEIGHT_OFFSET;
 // Was SquadSelect confirmed
 var bool bConfirmScreenWasOpened;
 
+var string ControllerButtonIconPath;
+
 delegate OldOnClickedDelegate(UIButton Button);
 
 defaultproperties
@@ -26,6 +28,8 @@ defaultproperties
 
 	CHECKBOX_HEIGHT_OFFSET=20
 	CHECKBOX_MARGIN=5
+
+	ControllerButtonIconPath = "";
 }
 
 event OnInit(UIScreen Screen)
@@ -42,6 +46,10 @@ event OnInit(UIScreen Screen)
     if(UICovertActionsGeoscape(Screen) == none) {
 		return;
 	}
+
+	if(ControllerButtonIconPath == "") {
+        ControllerButtonIconPath = class'UIUtilities_Input'.const.ICON_X_SQUARE;
+    }
 	
 	
 	Program = RTGameState_ProgramFaction(`XCOMHISTORY.GetSingleGameStateObjectForClass(class'RTGameState_ProgramFaction'));
@@ -138,15 +146,18 @@ function HandleInput(bool bIsSubscribing)
 
 protected function bool OnUnrealCommand(int cmd, int arg)
 {
+	local bool isCheckboxDisabled;
+
 	if (cmd == class'UIUtilities_Input'.const.FXS_BUTTON_X && arg == class'UIUtilities_Input'.const.FXS_ACTION_RELEASE)
 	{
 		// Cannot open screen during flight
 		if (class'XComEngine'.static.GetHQPres().StrategyMap2D.m_eUIState != eSMS_Flight)
 		{
 			// flip the checkbox
-			if(Checkbox != none)
+			isCheckboxDisabled = Checkbox.bIsDisabled || Checkbox.bReadOnly;
+			if(Checkbox != none && !isCheckboxDisabled)
 			{
-				Checkbox.bChecked = !Checkbox.bChecked;
+				Checkbox.SetChecked(!Checkbox.bChecked);
 			}
 			
 		}
@@ -186,6 +197,7 @@ function OnMainActionButtonInited(UIPanel Panel) {
 	local bool bReadOnly;
 	local RTGameState_ProgramFaction Program;
 	local UIButton Button;
+	local UIImage ControllerIcon;
 	local float PosX, PosY, LocHeight, LocWidth;
 	local string strCheckboxDesc;
 
@@ -236,7 +248,15 @@ function OnMainActionButtonInited(UIPanel Panel) {
 		.SetPosition(PosX, PosY)
 		.SetColor(class'UIUtilities_Colors'.static.ColorToFlashHex(Program.GetMyTemplate().FactionColor))
 		.SetTooltipText(strCheckboxDesc, , , 10, , , true, 0.0f);
-	`RTLOG("Created a checkbox at position " $ PosX $ " x and " $ PosY $ " y.");
+	`RTLOG("Created a checkbox at position " $ PosX $ " x and " $ PosY $ " y for UICovertActionsGeoscape");
+
+	if(`ISCONTROLLERACTIVE) {
+		ControllerIcon = UICAG.Spawn(class'UIImage', UICAG.ButtonGroupWrap);
+		ControllerIcon.InitImage('RT_UICAGOSF_Checkbox_ControllerIcon', "img:///gfxGamepadIcons." $ class'UIUtilities_Input'.static.GetGamepadIconPrefix() $ ControllerButtonIconPath);
+		ControllerIcon.SetSize(25, 25);
+		ControllerIcon.SetPosition(PosX + (Button.Height / 2), PosY + (Button.Height / 2));
+	}
+
 	HandleInput(true);
 
 	// Modify the OnLaunchButtonClicked Delegate

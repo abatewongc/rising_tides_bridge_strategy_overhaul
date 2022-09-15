@@ -117,12 +117,12 @@ static function PatchCICovertActionsWithProgramNarratives() {
 
 			if(ActionTemplate.DataName == 'CovertAction_PatrolWilderness') {
                 `RTLOG("Found CovertAction_PatrolWilderness, patching...");
-				ActionTemplate.Narratives.AddItem('CovertActionNarrative_AlienCorpses_Program');
+				ActionTemplate.Narratives.AddItem('CovertActionNarrative_PatrolWilderness_Program');
             }
 
-			if(ActionTemplate.DataName == 'CovertAction_IncreaseIncome') {
-                `RTLOG("Found CovertAction_IncreaseIncome, patching...");
-				ActionTemplate.Narratives.AddItem('CovertActionNarrative_PatrolWilderness_Program');
+			if(ActionTemplate.DataName == 'CovertAction_AlienCorpses') {
+                `RTLOG("Found CovertAction_AlienCorpses, patching...");
+				ActionTemplate.Narratives.AddItem('CovertActionNarrative_AlienCorpses_Program');
             }
 
 			if(ActionTemplate.DataName == 'CovertAction_BlackMarket') {
