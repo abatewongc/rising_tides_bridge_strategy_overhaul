@@ -37,8 +37,6 @@ event OnInit(UIScreen Screen)
 	local RTGameState_ProgramFaction Program;
 	local Object ThisObj;
 
-	`RTLOG("RTUIScreenListener_OneSmallFavor_CI OnInit", false, false);
-
 	if(!`DLCINFO.IsModLoaded('CovertInfiltration')) {
 		return;
 	}
@@ -66,7 +64,7 @@ event OnInit(UIScreen Screen)
 	UICAG = UICovertActionsGeoscape(Screen);
 	AddOneSmallFavorSelectionCheckBox();
 	ThisObj = self;
-	`XEVENTMGR.RegisterForEvent(ThisObj, 'CI_UICovertActionsGeoscape_UpdateData', CI_UICAG_UpdateDataListener, ELD_Immediate, /*Priority*/, /*PreFilterObj*/, /**bPersistent*/, /*CallbackObj*/ ThisObj);
+	`XEVENTMGR.RegisterForEvent(ThisObj, 'CI_UICovertActionsGeoscape_PostUpdateData', CI_UICAG_PostUpdateDataListener, ELD_Immediate, /*Priority*/, /*PreFilterObj*/, /**bPersistent*/, /*CallbackObj*/ ThisObj);
 }
 
 event OnRemoved(UIScreen Screen) {
@@ -277,9 +275,9 @@ simulated function OnCheckboxChange(UICheckbox checkboxControl)
 // EventData = UICAG
 // EventSource = UICAG
 // XComGameState = none
-// EventID = CI_UICovertActionsGeoscape_UpdateData
+// EventID = CI_UICovertActionsGeoscape_PostUpdateData
 // CallbackData = this
-static function EventListenerReturn CI_UICAG_UpdateDataListener(Object EventData, Object EventSource, XComGameState GameState, Name EventID, Object CallbackData) {
+static function EventListenerReturn CI_UICAG_PostUpdateDataListener(Object EventData, Object EventSource, XComGameState GameState, Name EventID, Object CallbackData) {
 	local UICovertActionsGeoscape LocUICAG;
 	local RTUIScreenListener_OneSmallFavor_CI thisObj;
 	local RTGameState_ProgramFaction Program;
@@ -346,15 +344,15 @@ function ModifiedLaunchButtonClicked(UIButton Button) {
 	`RTLOG("ModifiedLaunchButtonClicked!");
 	ActionRef = UICAG.GetAction().GetReference();
 	if(UICAG == none) {
-		`RTLOG("WTF UICAG IS NONE?!", true, false);
+		`RTLOG("RTUIScreenListener_OneSmallFavor_CI::ModifiedLaunchButtonClicked: UICAG is none?!", true, false);
 	}
 
 	if(Checkbox == none) {
-		`RTLOG("WTF CHECKBOX IS NONE?!", true, false);
+		`RTLOG("RTUIScreenListener_OneSmallFavor_CI::ModifiedLaunchButtonClicked: Checkbox is none?!", true, false);
 	}
 
 	if(ActionRef.ObjectID == 0) {
-		`RTLOG("WTF ActionRef IS NONE?!", true, false);
+		`RTLOG("RTUIScreenListener_OneSmallFavor_CI::ModifiedLaunchButtonClicked: ActionRef is none?!", true, false);
 	}
 
 	if(Checkbox.bChecked) {
