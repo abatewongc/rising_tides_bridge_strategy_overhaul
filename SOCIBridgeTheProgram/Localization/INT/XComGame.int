@@ -25,7 +25,7 @@ ActionPreNarrative="RECSAT 2 picked up several benign anomalies on its last swee
 ActionPostNarrative="The patrol found several interesting locations that warrant further investigation."
 
 [CovertActionNarrative_BlackMarket_Program X2CovertActionNarrativeTemplate]
-ActionName="Help the Smugglers"
-ActionPreNarrative="The Black Market was sent packing by an ADVENT anti-smuggling operation a few weeks ago. We should send a squad to help them get back on their feet."
-ActionPostNarrative="We saved our smuggler friends from an ADVENT sweep, but we lost them in the fighting. We'll need the Avenger's scanners to locate them again."
+ActionName="Deliver Aid Package to XCOM Smugglers"
+ActionPreNarrative="We have the intelligence assets in place to reroute an ADVENT supply truck to a place of your choosing, commander. Just let me know when and where to send it. - 'Handler 9'"
+ActionPostNarrative="Looks like the ambush got a bit hot, and the smugglers have gone to ground for a bit. You'll need to track them down yourselves. - 'Handler 9'"
  
