@@ -8,6 +8,7 @@ var StateObjectReference			ActionRef;
 var bool							bDebugging;
 var bool							OSFActivated;
 var array<int> 						OptionalStaffSlotIndices;
+var bool							bHasInitedCheckbox;
 
 var config float 					OSFCheckboxDistortOnClickDuration;
 
@@ -115,6 +116,7 @@ event OnRemoved(UIScreen Screen) {
 simulated function ManualGC() {
 	`RTLOG("RTCI: ManualGC called!");
 	OldOnClickedDelegate = none;
+	bHasInitedCheckbox = false;
     UICAG = none;
 	HandleInput(false);
 	if(Checkbox != none) {
@@ -258,11 +260,18 @@ function OnMainActionButtonInited(UIPanel Panel) {
 	HandleInput(true);
 
 	// Modify the OnLaunchButtonClicked Delegate
-	if(Button != none) {
-		OldOnClickedDelegate = Button.OnClickedDelegate;
-		Button.OnClickedDelegate = ModifiedLaunchButtonClicked;
-	} else {
+	if(Button == none) {
 		`RTLOG("Panel was not a button?", true);
+	} else if (bHasInitedCheckbox) {
+		`RTLOG("We've already modified the button. Don't modify it again.", true);
+	} else {
+		`RTLOG("Trying to modify the go to loadout/launch button...");
+		bHasInitedCheckbox = true;
+		if(Button.OnClickedDelegate != ModifiedLaunchButtonClicked) {
+			`RTLOG("Successfully modified!");
+			OldOnClickedDelegate = Button.OnClickedDelegate;
+			Button.OnClickedDelegate = ModifiedLaunchButtonClicked;
+		}
 	}
 }
 
@@ -545,8 +554,8 @@ private function RemoveOneSmallFavor_Infiltration(RTGameState_ProgramFaction Pro
 }
 
 simulated function ModifyOneSmallFavorSitrepForGeneratedMission(RTGameState_ProgramFaction Program, XComGameState_MissionSite MissionState, bool bAdd = true) {
-	if(bAdd) { MissionState.GeneratedMission.SitReps.AddItem(Program.GetSquadForMission(MissionState.GetReference()).GetAssociatedSitRepTemplateName()); }
-	else { MissionState.GeneratedMission.SitReps.RemoveItem(Program.GetSquadForMission(MissionState.GetReference()).GetAssociatedSitRepTemplateName()); }
+	if(bAdd) { MissionState.GeneratedMission.SitReps.AddItem(Program.GetSquadForMission(MissionState.GetReference(), false).GetAssociatedSitRepTemplateName()); }
+	else { MissionState.GeneratedMission.SitReps.RemoveItem(Program.GetSquadForMission(MissionState.GetReference(), false).GetAssociatedSitRepTemplateName()); }
 }
 
 function ModifyMissionData(XComGameState_HeadquartersXCom NewXComHQ, XComGameState_MissionSite NewMissionState)

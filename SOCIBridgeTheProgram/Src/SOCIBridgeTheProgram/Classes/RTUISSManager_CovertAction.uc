@@ -29,11 +29,11 @@ simulated protected function AugmentFakeMissionSite(XComGameState_MissionSite Fa
 		FakeMissionSite.GeneratedMission.SitReps = class'X2Helper_Infiltration'.static.GetMissionSiteFromAction(CovertAction).GeneratedMission.SitReps;
 		if(Activated && SpecialSoldiers.Length == 0) {
 			MissionSiteState = class'X2Helper_Infiltration'.static.GetMissionSiteFromAction(CovertAction);
-			SpecialSoldiers = `RTS.GetProgramState().GetSquadForMission(MissionSiteState.GetReference()).GetSoldiersAsSpecial();
+			SpecialSoldiers = `RTS.GetProgramState().GetSquadForMission(MissionSiteState.GetReference(), false).GetSoldiersAsSpecial();
 		}
 	} else {
 		if(Activated && SpecialSoldiers.Length == 0) {
-			SpecialSoldiers = `RTS.GetProgramState().GetSquadForCovertAction(CovertAction.GetReference()).GetSoldiersAsSpecial();
+			SpecialSoldiers = `RTS.GetProgramState().GetSquadForCovertAction(CovertAction.GetReference(), false).GetSoldiersAsSpecial();
 		}
 	}
 	
@@ -215,7 +215,7 @@ simulated protected function array<SSAAT_SlotConfiguration> BuildOSFInfiltration
 		`RTLOG("Added a slot!");
 	}
 
-	DesiredSlots = max(`RTS.GetProgramState().GetSquadForMission(class'X2Helper_Infiltration'.static.GetMissionSiteFromAction(GetAction()).GetReference()).Operatives.Length, default.DefaultDesiredSlotsForOSFInfiltration);
+	DesiredSlots = max(`RTS.GetProgramState().GetSquadForMission(class'X2Helper_Infiltration'.static.GetMissionSiteFromAction(GetAction()).GetReference(), false).Operatives.Length, default.DefaultDesiredSlotsForOSFInfiltration);
 	`RTLOG("Removing slots, DesiredSlots =" $ DesiredSlots);
 	while(Slots.Length > DesiredSlots) {
 		RemoveSlotByImportance(Slots);
