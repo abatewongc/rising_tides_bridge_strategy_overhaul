@@ -30,10 +30,8 @@ static function CHEventListenerTemplate HandleStrategyEvents()
 // GameState is New
 static protected function EventListenerReturn OnCovertActionCompleted(Object EventData, Object EventSource, XComGameState NewGameState, Name Event, Object CallbackData)
 {
-    local RTGameState_ProgramFaction ProgramState;
-    local RTGameState_PersistentGhostSquad SquadState, NewSquadState;
     local XComGameState_CovertAction ActionState;
-    local StateObjectReference EmptyRef;
+    local RTGameState_ProgramFaction ProgramState;
 
     `RTLOG("OnCovertActionComplete");
     
@@ -43,12 +41,28 @@ static protected function EventListenerReturn OnCovertActionCompleted(Object Eve
         return ELR_NoInterrupt;
     }
 
+    if(!RecoverProgramOperativeFromDeployment(NewGameState, ActionState)) {
+        return ELR_NoInterrupt;
+    }
+
+    ProgramState = `RTS.GetNewProgramState(NewGameState);
+    ProgramState.TryIncreaseInfluence();
+
+    // we don't need to submit anything because we receieved a NewGameState
+	return ELR_NoInterrupt;
+}
+
+static protected function bool RecoverProgramOperativeFromDeployment(XComGameState NewGameState, XComGameState_CovertAction ActionState) {
+    local RTGameState_ProgramFaction ProgramState;
+    local RTGameState_PersistentGhostSquad SquadState;
+    local StateObjectReference EmptyRef;
+
     ProgramState = `RTS.GetProgramState();
     SquadState = ProgramState.GetSquadForCovertAction(ActionState.GetReference(), true);
     if(SquadState == none) {
         // this is the usual outcome. return 
         `RTLOG("Did not find a deployed Program Squad for Covert Action with ObjectID " $ ActionState.GetReference().ObjectID);
-        return ELR_NoInterrupt;
+        return false;
     }
 
     `RTLOG("Found a deployed squad. Recovering them.");
@@ -56,9 +70,7 @@ static protected function EventListenerReturn OnCovertActionCompleted(Object Eve
     ProgramState = `RTS.GetNewProgramState(NewGameState);
     SquadState = RTGameState_PersistentGhostSquad(NewGameState.ModifyStateObject(class'RTGameState_PersistentGhostSquad', SquadState.ObjectID));
     SquadState.DeploymentRef = EmptyRef;
-
-    // we don't need to submit anything because we receieved a NewGameState
-	return ELR_NoInterrupt;
+    return true;
 }
 
 // EventData is an XComGameState_SquadPickupPoint
