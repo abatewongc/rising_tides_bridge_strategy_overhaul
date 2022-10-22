@@ -5,19 +5,21 @@ static function array<X2DataTemplate> CreateTemplates()
 {
 	local array<X2DataTemplate> Templates;
 
-	Templates.AddItem(HandleCovertActionCompleted());
+	Templates.AddItem(HandleStrategyEvents());
 
 	return Templates;
 }
 
 //`XEVENTMGR.TriggerEvent('CovertActionCompleted', , self, NewGameState);
-static function CHEventListenerTemplate HandleCovertActionCompleted()
+//`XEVENTMGR.TriggerEvent('CovertActionAborted', self, CovertAction, NewGameState);
+static function CHEventListenerTemplate HandleStrategyEvents()
 {
 
     local CHEventListenerTemplate Template;
 
-	`CREATE_X2TEMPLATE(class'CHEventListenerTemplate', Template, 'RTSOCI_CovertActionCompleted');
+	`CREATE_X2TEMPLATE(class'CHEventListenerTemplate', Template, 'RTSOCI_StrategyEvents');
 	Template.AddCHEvent('CovertActionCompleted', OnCovertActionCompleted, ELD_Immediate, 90);
+	Template.AddCHEvent('CovertActionAborted', OnCovertActionAborted, ELD_Immediate, 90);
 	Template.RegisterInStrategy = true;
 
 	return Template;
@@ -57,4 +59,58 @@ static protected function EventListenerReturn OnCovertActionCompleted(Object Eve
 
     // we don't need to submit anything because we receieved a NewGameState
 	return ELR_NoInterrupt;
+}
+
+// EventData is an XComGameState_SquadPickupPoint
+// EventSource is an XComGameState_CovertAction
+// GameState is New
+static protected function EventListenerReturn OnCovertActionAborted(Object EventData, Object EventSource, XComGameState NewGameState, Name Event, Object CallbackData)
+{
+    local RTGameState_ProgramFaction ProgramState;
+    local RTGameState_PersistentGhostSquad SquadState, NewSquadState;
+    local XComGameState_MissionSite MissionSiteState;
+    local XComGameState_CovertAction ActionState;
+    local StateObjectReference EmptyRef;
+
+    `RTLOG("OnCovertActionAborted");
+    
+    ActionState = XComGameState_CovertAction(EventSource);
+    if(ActionState == none) {
+        `RTLOG("OnCovertActionAborted recieved a none ActionState?!");
+        return ELR_NoInterrupt;
+    }
+
+    ProgramState = `RTS.GetProgramState();
+    SquadState = ProgramState.GetSquadForCovertAction(ActionState.GetReference(), true);
+    if(SquadState != none) {
+        `RTLOG("Found a deployed squad. Recovering them.");
+        // we were deployed on this CA. Need to modify the gamestate.
+        ProgramState = `RTS.GetNewProgramState(NewGameState);
+        SquadState = RTGameState_PersistentGhostSquad(NewGameState.ModifyStateObject(class'RTGameState_PersistentGhostSquad', SquadState.ObjectID));
+        SquadState.DeploymentRef = EmptyRef;
+
+        // we don't need to submit anything because we receieved a NewGameState
+	    return ELR_NoInterrupt;
+    }
+
+    if(class'X2Helper_Infiltration'.static.IsInfiltrationAction(ActionState)) {
+        MissionSiteState = class'X2Helper_Infiltration'.static.GetMissionSiteFromAction(ActionState);
+        if(MissionSiteState != none) {
+            SquadState = ProgramState.GetSquadForMission(MissionSiteState.GetReference(), true);
+            if(SquadState != none) {
+                `RTLOG("Found a deployed squad. Recovering them.");
+                // we were deployed on this CA. Need to modify the gamestate.
+                ProgramState = `RTS.GetNewProgramState(NewGameState);
+                SquadState = RTGameState_PersistentGhostSquad(NewGameState.ModifyStateObject(class'RTGameState_PersistentGhostSquad', SquadState.ObjectID));
+                SquadState.DeploymentRef = EmptyRef;
+
+                // we don't need to submit anything because we receieved a NewGameState
+	            return ELR_NoInterrupt;
+            }
+        }
+    }
+
+    // this is the usual outcome. return 
+    `RTLOG("Did not find a deployed Program Squad for Covert Action with ObjectID " $ ActionState.GetReference().ObjectID);
+    return ELR_NoInterrupt;
 }

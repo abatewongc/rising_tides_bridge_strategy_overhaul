@@ -8,7 +8,10 @@ var StateObjectReference			ActionRef;
 var bool							bDebugging;
 var bool							OSFActivated;
 var array<int> 						OptionalStaffSlotIndices;
-var bool							bHasInitedCheckbox;
+var bool 							isAbort;
+
+// oof...
+var bool 							bRecursionGuard;
 
 var config float 					OSFCheckboxDistortOnClickDuration;
 
@@ -30,6 +33,7 @@ defaultproperties
 	CHECKBOX_HEIGHT_OFFSET=20
 	CHECKBOX_MARGIN=5
 
+	bRecursionGuard=false
 	ControllerButtonIconPath = "";
 }
 
@@ -77,15 +81,19 @@ event OnRemoved(UIScreen Screen) {
 		return;
 	}
 
+	bRecursionGuard = false;
+
 	if(UISquadSelect(Screen) != none) {
 		ss = UISquadSelect(Screen);
 		// If the mission was launched, we don't want to clean up the XCGS_MissionSite
 		if(!bConfirmScreenWasOpened && ActionRef.ObjectID != 0) {
-			`RTLOG("We didn't launch, cleaning up OSF from UISS!");
-			RemoveOneSmallFavor();
+			if(Checkbox.bChecked) {
+				`RTLOG("We didn't launch, cleaning up OSF from UISS!");
+				RemoveOneSmallFavor();
+			}
 		} else {
 			bConfirmScreenWasOpened = false;
-			`RTLOG("We launched, not cleaning up OSF from UICAG!");
+			`RTLOG("We launched, not cleaning up OSF from UISS!");
 		}
 
 		ActionRef = EmptyRef;
@@ -98,7 +106,7 @@ event OnRemoved(UIScreen Screen) {
 
 	if(UICovertActionsGeoscape(Screen) != none) {
 		// Just avoiding a RedScreen here, not necessarily a useful check
-		if(!bConfirmScreenWasOpened && ActionRef.ObjectID != 0) {
+		if(!UICAG.GetAction().bStarted && !bConfirmScreenWasOpened && ActionRef.ObjectID != 0) {
 			`RTLOG("We didn't launch, cleaning up OSF from UICAG!");
 			RemoveOneSmallFavor();	
 		} else {
@@ -116,7 +124,6 @@ event OnRemoved(UIScreen Screen) {
 simulated function ManualGC() {
 	`RTLOG("RTCI: ManualGC called!");
 	OldOnClickedDelegate = none;
-	bHasInitedCheckbox = false;
     UICAG = none;
 	HandleInput(false);
 	if(Checkbox != none) {
@@ -262,15 +269,14 @@ function OnMainActionButtonInited(UIPanel Panel) {
 	// Modify the OnLaunchButtonClicked Delegate
 	if(Button == none) {
 		`RTLOG("Panel was not a button?", true);
-	} else if (bHasInitedCheckbox) {
-		`RTLOG("We've already modified the button. Don't modify it again.", true);
 	} else {
 		`RTLOG("Trying to modify the go to loadout/launch button...");
-		bHasInitedCheckbox = true;
 		if(Button.OnClickedDelegate != ModifiedLaunchButtonClicked) {
 			`RTLOG("Successfully modified!");
 			OldOnClickedDelegate = Button.OnClickedDelegate;
 			Button.OnClickedDelegate = ModifiedLaunchButtonClicked;
+		} else {
+			`RTLOG("Attempt failed. We had already modified the button.");
 		}
 	}
 }
@@ -292,7 +298,9 @@ static function EventListenerReturn CI_UICAG_PostUpdateDataListener(Object Event
 	local RTGameState_ProgramFaction Program;
 	local XComGameState_CovertAction ActionState;
 	local UIButton Button;
+	local bool bCheckboxNeededCreation;
 
+	`RTLOG("CI_UICAG_PostUpdateDataListener");
 	thisObj = RTUIScreenListener_OneSmallFavor_CI(CallbackData);
 	LocUICAG = UICovertActionsGeoscape(EventSource);
 	if(LocUICAG == none) {
@@ -301,8 +309,11 @@ static function EventListenerReturn CI_UICAG_PostUpdateDataListener(Object Event
 	}
 	Button = LocUICAG.MainActionButton;
 
+	bCheckboxNeededCreation = false;
 	if(thisObj.Checkbox == none) {
+		thisObj.UICAG = LocUICAG;
 		thisObj.AddOneSmallFavorSelectionCheckBox();
+		bCheckboxNeededCreation = true;
 	}
 
 	ActionState = LocUICAG.GetAction();
@@ -341,8 +352,19 @@ static function EventListenerReturn CI_UICAG_PostUpdateDataListener(Object Event
 	}
 
 	thisObj.Checkbox.SetReadOnly(false);
-	thisObj.OldOnClickedDelegate = Button.OnClickedDelegate;
-	Button.OnClickedDelegate = thisObj.ModifiedLaunchButtonClicked;
+	// Modify the OnLaunchButtonClicked Delegate
+	if(Button == none) {
+		`RTLOG("Panel was not a button?", true);
+	} else {
+		`RTLOG("Trying to modify the go to loadout/launch button...");
+		if(!bCheckboxNeededCreation) {
+			`RTLOG("Successfully modified!");
+			thisObj.OldOnClickedDelegate = Button.OnClickedDelegate;
+			Button.OnClickedDelegate = thisObj.ModifiedLaunchButtonClicked;
+		} else {
+			`RTLOG("Attempt failed. We had already modified the button.");
+		}
+	}
 
 	`RTLOG("RTCI: Successfully updated button for OSF!");
 
@@ -351,6 +373,10 @@ static function EventListenerReturn CI_UICAG_PostUpdateDataListener(Object Event
 
 function ModifiedLaunchButtonClicked(UIButton Button) {
 	`RTLOG("ModifiedLaunchButtonClicked!");
+	if(bRecursionGuard) {
+		return;
+	}
+
 	ActionRef = UICAG.GetAction().GetReference();
 	if(UICAG == none) {
 		`RTLOG("RTUIScreenListener_OneSmallFavor_CI::ModifiedLaunchButtonClicked: UICAG is none?!", true, false);
@@ -369,7 +395,10 @@ function ModifiedLaunchButtonClicked(UIButton Button) {
 		OpenProgramLoadoutForCurrentAction();
 	} else {
 		OSFActivated = false;
-		OldOnClickedDelegate(Button);
+		if(OldOnClickedDelegate != ModifiedLaunchButtonClicked) {
+			bRecursionGuard = true;
+			OldOnClickedDelegate(Button);
+		}
 	}
 }
 
@@ -476,6 +505,10 @@ function RemoveOneSmallFavor() {
 	History = `XCOMHISTORY;
 	ActionState = XComGameState_CovertAction(History.GetGameStateForObjectID(ActionRef.ObjectID));
 	Program = RTGameState_ProgramFaction(History.GetSingleGameStateObjectForClass(class'RTGameState_ProgramFaction'));
+
+	if(ActionState == none) {
+		return;
+	}
 
 	if(!class'X2Helper_Infiltration'.static.IsInfiltrationAction(ActionState)) {
 		`RTLOG("RTCI: Removing OSF from Covert Action!");
@@ -589,11 +622,15 @@ simulated function RevertStaffSlotsForXComInfiltration(XComGameState NewGameStat
 	local CovertActionStaffSlot Slot, EmptySlot;
 	local int i;
 
+	`RTLOG("RevertStaffSlotsForXComInfiltration");
+
 	for(i = 0; i < ActionState.StaffSlots.Length; ++i) {
 		ActionState.StaffSlots[i].bOptional = false;	
 	}
 
+	`RTLOG("Reseting optional staff slot indices...");
 	foreach OptionalStaffSlotIndices(i) {
+		`RTLOG("Making slot " $ i $ " optional");
 		ActionState.StaffSlots[i].bOptional = true;
 	}
 }
